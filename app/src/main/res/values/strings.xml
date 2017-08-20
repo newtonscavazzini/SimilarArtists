@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="lang">en</string>
+    <string name="app_name">Similar Artists</string>
+
+    <string name="last_fm_api">Made with Last.fm API</string>
+    <string name="home_text">Find artists and bands similar to the ones you already like</string>
+    <string name="search_artist">Search artist</string>
+    <string name="artist_name">Artist name</string>
+    <string name="top_artists">Top Artists</string>
+    <string name="about">About</string>
+    <string name="top_tracks">Top Tracks</string>
+    <string name="version">Version</string>
+    <string name="top_albums">Top Albums</string>
+    <string name="tracks">Tracks</string>
+
+    <string name="try_again">Try again</string>
+    <string name="failed_to_connect">Failed to connect to network</string>
+    <string name="read_more">Read more</string>
+    <string name="more">More</string>
+    <string name="similar_artists">Similar artists</string>
+    <string name="searching_for">Searching for…</string>
+    <string name="similar_artists_to">Similar Artists to</string>
+    <string name="get_the_source_code">Get the Source Code</string>
+
+</resources>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="lang">pt</string>
+    <string name="app_name">Artistas Similares</string>
+
+    <string name="last_fm_api">Feito com a Last.fm API</string>
+    <string name="home_text">Encontre artistas e bandas similares as que você gosta.</string>
+    <string name="search_artist">Procurar artista</string>
+    <string name="artist_name">Nome do Artista</string>
+    <string name="top_artists">Top Artistas</string>
+    <string name="about">Sobre</string>
+    <string name="top_tracks">Principais músicas</string>
+    <string name="version">Versão</string>
+    <string name="top_albums">Principais discos</string>
+    <string name="tracks">Músicas</string>
+
+    <string name="try_again">Tentar novamente</string>
+    <string name="failed_to_connect">Falha ao conectar-se com a rede</string>
+    <string name="read_more">Leia mais</string>
+    <string name="more">Mais</string>
+    <string name="similar_artists">Artistas Similares</string>
+    <string name="searching_for">Procurando por…</string>
+    <string name="similar_artists_to">Artistas Similares a</string>
+    <string name="get_the_source_code">Veja o Código-Fonte</string>
+
+
+</resources>

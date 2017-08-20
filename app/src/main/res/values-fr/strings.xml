@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+
+    <string name="lang">fr</string>
+    <string name="app_name">Artistes Similaires</string>
+
+    <string name="last_fm_api">Développé avec les API de Last.fm</string>
+    <string name="home_text">Trouvez des artistes et des groupes similaires à ceux que vous aimez.</string>
+    <string name="search_artist">Recherchez un artiste</string>
+    <string name="artist_name">Nom de l\'artiste</string>
+    <string name="top_artists">Meilleurs artistes</string>
+    <string name="about">Sur</string>
+    <string name="top_tracks">Top des chansons</string>
+    <string name="version">Version</string>
+    <string name="top_albums">Top Albums</string>
+    <string name="tracks">Tracks</string>
+
+    <string name="try_again">Try again</string>
+    <string name="failed_to_connect">Failed to connect to network</string>
+    <string name="read_more">Read more</string>
+    <string name="more">More</string>
+    <string name="similar_artists">Similar artists</string>
+    <string name="searching_for">Searching for…</string>
+    <string name="similar_artists_to">Similar Artists to</string>
+    <string name="get_the_source_code">Get the Source Code</string>
+
+</resources>
