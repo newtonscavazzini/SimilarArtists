@@ -31,10 +31,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.GridView;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
+import android.widget.LinearLayout;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,16 +40,15 @@ import newscavazzini.similarartists.*;
 import newscavazzini.similarartists.adapters.ArtistAdapter;
 import newscavazzini.similarartists.listeners.ArtistClickListener;
 import newscavazzini.similarartists.models.artist.Artist;
-import newscavazzini.similarartists.retrofit.RetrofitInitializer;
-import newscavazzini.similarartists.retrofit.deserializer.TopArtistsDeserializer;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import newscavazzini.similarartists.mvp.presenter.MainActivityPresenter;
+import newscavazzini.similarartists.mvp.view.MainActivityView;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements MainActivityView {
 
+    private MainActivityPresenter presenter;
     private List<Artist> mTopArtists = new ArrayList<>();
-    private int mDownloadAttempts;
+    private LinearLayout mDownloadFailedLl;
+    private LinearLayout mLoadingLl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,110 +56,42 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        if(toolbar != null) setSupportActionBar(toolbar);
+        mDownloadFailedLl = (LinearLayout) findViewById(R.id.download_failed_ll);
+        mLoadingLl = (LinearLayout) findViewById(R.id.loading);
 
-        if (savedInstanceState != null)
-            loadFromInstanceState(savedInstanceState);
+        presenter = new MainActivityPresenter(this);
 
-        else
-            loadFromNetwork();
+        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
 
-    }
+        presenter.loadTopArtists(savedInstanceState);
 
-    private void tryAgain() {
-        this.mDownloadAttempts = 0;
-
-        findViewById(R.id.loading).setVisibility(View.VISIBLE);
-        findViewById(R.id.download_failed_ll).setVisibility(View.GONE);
-
-        loadFromNetwork();
-    }
-
-    private void downloadFailed() {
-
-        findViewById(R.id.loading).setVisibility(View.GONE);
-        findViewById(R.id.download_failed_ll).setVisibility(View.VISIBLE);
-
-        findViewById(R.id.try_again).setOnClickListener(this);
+        findViewById(R.id.try_again).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                MainActivity.this.mLoadingLl.setVisibility(View.VISIBLE);
+                MainActivity.this.mDownloadFailedLl.setVisibility(View.GONE);
+                MainActivity.this.presenter.loadTopArtists(null);
+            }
+        });
 
     }
 
     @Override
-    public void onClick(View v) {
-        switch (v.getId()){
+    public void showArtists(List<Artist> artists) {
 
-            case R.id.try_again:
-                tryAgain();
-                break;
-
-        }
-    }
-
-    private void setUi(List<Artist> topArtists) {
-
-        findViewById(R.id.download_failed_ll).setVisibility(View.GONE);
-
-        this.mTopArtists = topArtists;
+        this.mDownloadFailedLl.setVisibility(View.GONE);
+        this.mTopArtists = artists;
 
         GridView topArtitsGv = (GridView) findViewById(R.id.artists_gv);
-        topArtitsGv.setAdapter(new ArtistAdapter(this, topArtists, new ArtistClickListener(this)));
+        topArtitsGv.setAdapter(new ArtistAdapter(
+                this, artists, new ArtistClickListener(this)));
 
     }
 
-    private void loadFromNetwork() {
-
-        mDownloadAttempts++;
-
-        if (mDownloadAttempts > 3) {
-            downloadFailed();
-            return;
-        }
-
-        Gson gsonTopArtists = new GsonBuilder()
-                .registerTypeAdapter(new TypeToken<List<Artist>>(){}.getType(), new TopArtistsDeserializer())
-                .create();
-
-        Call<List<Artist>> topArtistsCall = new RetrofitInitializer(gsonTopArtists)
-                .getArtistService()
-                .getTopArtists(RetrofitInitializer.LAST_FM_KEY, 20);
-
-        topArtistsCall.enqueue(new Callback<List<Artist>>() {
-
-            @Override
-            public void onResponse(Call<List<Artist>> call, Response<List<Artist>> response) {
-
-                List<Artist> topArtists = response.body();
-                if (topArtists != null && topArtists.size() > 0) {
-
-                    setUi(topArtists);
-                    findViewById(R.id.loading).setVisibility(View.GONE);
-
-                } else {
-
-                    loadFromNetwork();
-
-                }
-
-            }
-
-            @Override
-            public void onFailure(Call<List<Artist>> call, Throwable t) {
-                loadFromNetwork();
-            }
-        });
-    }
-
-    private void loadFromInstanceState(Bundle savedInstanceState) {
-
-        List<Artist> topArtists = ((List<Artist>) savedInstanceState.getSerializable("topArtists"));
-
-        if (topArtists != null && topArtists.size() > 0)
-            setUi(topArtists);
-
-        else
-            downloadFailed();
-
+    @Override
+    public void showError() {
+        this.mLoadingLl.setVisibility(View.GONE);
+        this.mDownloadFailedLl.setVisibility(View.VISIBLE);
     }
 
     @Override
@@ -171,7 +99,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.menu_main, menu);
 
-        SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+        SearchManager searchManager = (SearchManager)
+                getSystemService(Context.SEARCH_SERVICE);
 
         SearchView searchView = (SearchView) menu.findItem(R.id.search).getActionView();
         searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
@@ -182,21 +111,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
 
-        int id = item.getItemId();
+        switch (item.getItemId()) {
 
-        if (id == R.id.action_settings) {
-            Intent intent = new Intent(this, SettingsActivity.class);
-            startActivity(intent);
-            return true;
+            case R.id.action_settings:
+                Intent intent = new Intent(this, SettingsActivity.class);
+                startActivity(intent);
+                return true;
+
+            default:
+                return super.onOptionsItemSelected(item);
+
         }
 
-        return super.onOptionsItemSelected(item);
     }
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle bundle){
         super.onSaveInstanceState(bundle);
-        bundle.putSerializable("topArtists", new ArrayList<>(mTopArtists));
+        bundle.putSerializable("topArtists", new ArrayList<>(this.mTopArtists));
     }
 
 }
