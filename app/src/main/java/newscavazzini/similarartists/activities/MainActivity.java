@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
             public void onClick(View v) {
                 MainActivity.this.mLoadingLl.setVisibility(View.VISIBLE);
                 MainActivity.this.mDownloadFailedLl.setVisibility(View.GONE);
-                MainActivity.this.presenter.loadTopArtists(null);
+                MainActivity.this.presenter.tryAgain();
             }
         });
 

@@ -61,4 +61,8 @@ public class MainActivityPresenter {
         }
 
     }
+
+    public void tryAgain() {
+        loadTopArtists(null);
+    }
 }
