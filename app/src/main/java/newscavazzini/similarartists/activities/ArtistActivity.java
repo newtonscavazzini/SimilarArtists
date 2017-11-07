@@ -23,7 +23,6 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -33,14 +32,11 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import newscavazzini.similarartists.R;
+import newscavazzini.similarartists.adapters.AlbumsAdapter;
 import newscavazzini.similarartists.adapters.ArtistAdapter;
 import newscavazzini.similarartists.adapters.TracksAdapter;
 import newscavazzini.similarartists.listeners.AlbumClickListener;
@@ -50,347 +46,179 @@ import newscavazzini.similarartists.listeners.YoutubePlayStoreClickListener;
 import newscavazzini.similarartists.models.album.Album;
 import newscavazzini.similarartists.models.artist.Artist;
 import newscavazzini.similarartists.models.track.Track;
-import newscavazzini.similarartists.retrofit.RetrofitInitializer;
-import newscavazzini.similarartists.retrofit.deserializer.AlbumDeserializer;
-import newscavazzini.similarartists.retrofit.deserializer.ArtistDeserializer;
-import newscavazzini.similarartists.retrofit.deserializer.TrackListDeserializer;
+import newscavazzini.similarartists.mvp.presenter.ArtistActivityPresenter;
+import newscavazzini.similarartists.mvp.view.ArtistActivityView;
 import newscavazzini.similarartists.ui.ToolbarExtension;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
+public class ArtistActivity extends AppCompatActivity implements ArtistActivityView {
 
-public class ArtistActivity extends AppCompatActivity implements View.OnClickListener {
+    private ArtistActivityPresenter presenter;
 
     private Bundle mExtras;
     private Artist mArtist;
     private List<Track> mTopTracks = new ArrayList<>();
     private List<Album> mTopAlbums = new ArrayList<>();
-    private int mDownloadAttempts;
     private YoutubePlayStoreClickListener youtubePlayStoreListener;
 
-    private TextView mArtistBioTv;
-    private GridView mSimilarArtistsGv;
-    private GridView mTopTracksGv;
-    private GridView mTopAlbumsGv;
-    private Button mMoreSimilarBtn;
-    private Button mFullBioBtn;
     private ToolbarExtension mToolbarExtension;
+    private LinearLayout mLoadingLl;
+    private LinearLayout mDownloadFailedLl;
+    private LinearLayout mArtistLl;
+    private TextView mTopAlbumsTitleTv;
+    private TextView mTopTracksTitleTv;
+    private TextView mSimilarTitleTv;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_artist);
+        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
 
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        if(toolbar != null) setSupportActionBar(toolbar);
+        this.mLoadingLl = (LinearLayout) findViewById(R.id.loading);
+        this.mDownloadFailedLl = (LinearLayout) findViewById(R.id.download_failed_ll);
+        this.mArtistLl = (LinearLayout) findViewById(R.id.layoutArtist);
+        this.mTopAlbumsTitleTv = (TextView) findViewById(R.id.title_top_albums_tv);
+        this.mTopTracksTitleTv = (TextView) findViewById(R.id.title_top_tracks_tv);
+        this.mSimilarTitleTv = (TextView) findViewById(R.id.title_similars_tv);
 
         mToolbarExtension = new ToolbarExtension(this);
         youtubePlayStoreListener = new YoutubePlayStoreClickListener(this);
 
-        Intent intent = getIntent();
+        this.mExtras = getIntent().getExtras();
 
-        if(intent != null && intent.getExtras() != null) {
+        this.presenter = new ArtistActivityPresenter(this);
+        this.presenter.loadArtistInfo(getIntent().getExtras(), savedInstanceState);
 
-            mExtras = intent.getExtras();
-
-            if(savedInstanceState != null) {
-
-                loadDataFromInstanceState(savedInstanceState);
-                scrollToTopOfScreen();
-
-            } else {
-
-                loadDataFromNetwork();
-                scrollToTopOfScreen();
-
+        findViewById(R.id.try_again).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ArtistActivity.this.uiLoading(true);
+                ArtistActivity.this.presenter.tryAgain(getIntent().getExtras());
             }
+        });
 
-        } else {
-            finish();
-        }
-
-    }
-
-    private void scrollToTopOfScreen() {
-        ScrollView scrollView = (ScrollView) findViewById(R.id.scrollview_main);
-        scrollView.smoothScrollTo(0, 0);
-    }
-
-    private void setAlbumsUi(List<Album> topAlbums) {
-
-        this.mTopAlbums = topAlbums;
-
-        if (topAlbums != null && topAlbums.size() > 0) {
-
-            mTopAlbumsGv = (GridView) findViewById(R.id.albums_gv);
-            mTopAlbumsGv.setAdapter(new newscavazzini.similarartists.adapters.AlbumsAdapter(this,
-                    topAlbums, new AlbumClickListener(this, mExtras.getString("artistName"))));
-
-        }
-        else {
-            findViewById(R.id.title_top_albums_tv).setVisibility(View.GONE);
-        }
-
-    }
-
-    private void setTracksUi(List<Track> topTracks) {
-
-        this.mTopTracks = topTracks;
-
-        if (topTracks != null && topTracks.size() > 0) {
-
-            mTopTracksGv = (GridView) findViewById(R.id.tracks_gv);
-            mTopTracksGv.setAdapter(new TracksAdapter(this, topTracks,
-                    new TrackClickListener(this, mExtras.getString("artistName"))));
-
-        }
-        else {
-            findViewById(R.id.title_top_tracks_tv).setVisibility(View.GONE);
-        }
-
-    }
-
-    private void tryAgain() {
-        mDownloadAttempts = 0;
-
-        uiLoading(true);
-        findViewById(R.id.download_failed_ll).setVisibility(View.GONE);
-
-        loadArtistFromNetwork();
     }
 
     @Override
-    public void onClick(View v) {
-        switch (v.getId()){
+    public void showArtistInfo(Artist artist) {
 
-            case R.id.try_again:
-                tryAgain();
-                break;
-
-        }
-    }
-
-    private void downloadFailed() {
-
-        findViewById(R.id.loading).setVisibility(View.GONE);
-        findViewById(R.id.download_failed_ll).setVisibility(View.VISIBLE);
-
-        findViewById(R.id.try_again).setOnClickListener(this);
-
-    }
-
-    private void setArtistUi(Artist artist) {
-
-        if (artist == null) {
-            downloadFailed();
-        }
-
-        findViewById(R.id.download_failed_ll).setVisibility(View.GONE);
+        this.mDownloadFailedLl.setVisibility(View.GONE);
 
         this.mArtist = artist;
 
         if(getSupportActionBar() != null) getSupportActionBar().setTitle(artist.getName());
 
-        mToolbarExtension.show(R.drawable.ic_person_white, artist.getName(), artist.getTagsAsString());
+        mToolbarExtension.show(R.drawable.ic_person_white, artist.getName(),
+                artist.getTagsAsString());
 
-        mArtistBioTv = (TextView) findViewById(R.id.artist_bio_tv);
+        TextView mArtistBioTv = (TextView) findViewById(R.id.artist_bio_tv);
         mArtistBioTv.setText(artist.getBio().getSummary());
-        if (artist.getBio().getSummary().equals("")) findViewById(R.id.title_about_tv).setVisibility(View.GONE);
+        if (artist.getBio().getSummary().equals(""))
+            findViewById(R.id.title_about_tv).setVisibility(View.GONE);
 
-        // Load similar list
-        List<Artist> similarArtists = artist.getSimilar().getArtists();
-        if (similarArtists != null && similarArtists.size() > 0) {
-            mSimilarArtistsGv = (GridView) findViewById(R.id.artists_gv);
-            mSimilarArtistsGv.setAdapter(new ArtistAdapter(this, similarArtists, new ArtistClickListener(this)));
-        }
-        else {
-            findViewById(R.id.title_similars_tv).setVisibility(View.GONE);
-        }
-
-        mMoreSimilarBtn = (Button) findViewById(R.id.more_similar_btn);
+        Button mMoreSimilarBtn = (Button) findViewById(R.id.more_similar_btn);
         mMoreSimilarBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                showMoreSimilars();
+                presenter.showMoreSimilars(ArtistActivity.this.mArtist);
             }
         });
 
-        mFullBioBtn = (Button) findViewById(R.id.full_bio_btn);
+        Button mFullBioBtn = (Button) findViewById(R.id.full_bio_btn);
         mFullBioBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                openFullBio();
+                presenter.openFullBio(ArtistActivity.this.mArtist);
             }
         });
 
         scrollToTopOfScreen();
-
         uiLoading(false);
 
     }
 
-    private void openFullBio() {
-        Bundle bundle = new Bundle();
-        bundle.putString("bio", mArtist.getBio().getContent());
-        bundle.putString("artistName", mArtist.getName());
-        bundle.putString("artistTags", mArtist.getTagsAsString());
+    @Override
+    public void artistNotFound() {
+        this.mLoadingLl.setVisibility(View.GONE);
+        this.mDownloadFailedLl.setVisibility(View.VISIBLE);
+    }
 
+    @Override
+    public void showSimilarArtists(List<Artist> similarArtists) {
+
+        this.mSimilarTitleTv.setVisibility(View.VISIBLE);
+
+        GridView mSimilarArtistsGv = (GridView) findViewById(R.id.artists_gv);
+        mSimilarArtistsGv.setAdapter(
+                new ArtistAdapter(this, similarArtists,
+                        new ArtistClickListener(this)));
+
+    }
+
+    @Override
+    public void similarArtistsNotFound() {
+        this.mSimilarTitleTv.setVisibility(View.GONE);
+    }
+
+    @Override
+    public void showAlbums(List<Album> topAlbums) {
+
+        this.mTopAlbums = topAlbums;
+
+        this.mTopAlbumsTitleTv.setVisibility(View.VISIBLE);
+
+        GridView mTopAlbumsGv = (GridView) findViewById(R.id.albums_gv);
+        mTopAlbumsGv.setAdapter(new AlbumsAdapter(this, topAlbums,
+                new AlbumClickListener(this, mExtras.getString("artistName"))));
+
+    }
+
+    @Override
+    public void albumsNotFound() {
+        this.mTopAlbumsTitleTv.setVisibility(View.GONE);
+    }
+
+    @Override
+    public void showTracks(List<Track> topTracks) {
+
+        this.mTopTracks = topTracks;
+
+        this.mTopTracksTitleTv.setVisibility(View.VISIBLE);
+        GridView mTopTracksGv = (GridView) findViewById(R.id.tracks_gv);
+        mTopTracksGv.setAdapter(new TracksAdapter(this, topTracks,
+                new TrackClickListener(this, mExtras.getString("artistName"))));
+
+
+    }
+
+    @Override
+    public void tracksNotFound() {
+        this.mTopTracksTitleTv.setVisibility(View.GONE);
+    }
+
+    @Override
+    public void openFullBio(Bundle bundle) {
         Intent intent = new Intent(this, FullBioActivity.class);
         intent.putExtras(bundle);
         startActivity(intent);
     }
 
-    private void loadArtistFromNetwork() {
-
-        mDownloadAttempts++;
-
-        if (mDownloadAttempts > 3) {
-            downloadFailed();
-
-            uiLoading(false);
-            return;
-        }
-
-        uiLoading(true);
-
-        Gson gsonArtist = new GsonBuilder()
-                .registerTypeAdapter(Artist.class, new ArtistDeserializer())
-                .create();
-
-        Call<Artist> artistCall = new RetrofitInitializer(gsonArtist)
-                .getArtistService()
-                .getInfo(mExtras.getString("artistName"), RetrofitInitializer.LAST_FM_KEY, getString(R.string.lang));
-
-        artistCall.enqueue(new Callback<Artist>() {
-
-            @Override
-            public void onResponse(Call<Artist> call, Response<Artist> response) {
-
-                Artist artist = response.body();
-
-                if (artist != null && !artist.getName().equals("")) {
-
-                    setArtistUi(artist);
-
-                } else {
-                    loadArtistFromNetwork();
-                }
-
-            }
-
-            @Override
-            public void onFailure(Call<Artist> call, Throwable t) {
-                loadArtistFromNetwork();
-            }
-
-        });
-
-    }
-
-    private void loadDataFromNetwork() {
-
-        // Download Artist data
-        loadArtistFromNetwork();
-
-        // Download Top Tracks list
-        Gson gsonTopTracks = new GsonBuilder()
-                .registerTypeAdapter(new TypeToken<List<Track>>(){}.getType(), new TrackListDeserializer())
-                .create();
-
-        Call<List<Track>> topTracksCall = new RetrofitInitializer(gsonTopTracks)
-                .getTracksService()
-                .getTopTracks(mExtras.getString("artistName"), RetrofitInitializer.LAST_FM_KEY, 14);
-
-        topTracksCall.enqueue(new Callback<List<Track>>() {
-            @Override
-            public void onResponse(Call<List<Track>> call, final Response<List<Track>> response) {
-                ArtistActivity.this.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        setTracksUi(response.body());
-                    }
-                });
-            }
-
-            @Override
-            public void onFailure(Call<List<Track>> call, Throwable t) {
-                Log.e("Error", "onFailure: " + t.getMessage());
-            }
-        });
-
-        // Download Top Albums list
-        Gson gsonTopAlbums = new GsonBuilder()
-                .registerTypeAdapter(new TypeToken<List<Album>>(){}.getType(), new AlbumDeserializer())
-                .create();
-
-        Call<List<Album>> topAlbumsCall = new RetrofitInitializer(gsonTopAlbums)
-                .getAlbumsService()
-                .getTopAlbums(mExtras.getString("artistName"), RetrofitInitializer.LAST_FM_KEY, 4);
-
-        topAlbumsCall.enqueue(new Callback<List<Album>>() {
-            @Override
-            public void onResponse(Call<List<Album>> call, final Response<List<Album>> response) {
-                ArtistActivity.this.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        setAlbumsUi(response.body());
-                    }
-                });
-            }
-
-            @Override
-            public void onFailure(Call<List<Album>> call, Throwable t) {
-                Log.e("Error", "onFailure: " + t.getMessage());
-            }
-        });
-
-    }
-
-    private void loadDataFromInstanceState(Bundle savedInstanceState) {
-
-        Artist artist = (Artist) savedInstanceState.getSerializable("artist");
-        List<Track> topTracks = (List<Track>) savedInstanceState.getSerializable("topTracks");
-        List<Album> topAlbums = (List<Album>) savedInstanceState.getSerializable("topAlbums");
-
-        if (artist != null) {
-            setArtistUi(artist);
-        }
-
-        else
-            downloadFailed();
-
-        if (topTracks != null) setTracksUi(topTracks);
-        if (topAlbums != null) setAlbumsUi(topAlbums);
-
-
-    }
-
-    private void uiLoading(boolean loading) {
-
-        LinearLayout layoutArtist = (LinearLayout) findViewById(R.id.layoutArtist);
-        LinearLayout loadingArtist = (LinearLayout) findViewById(R.id.loading);
-
-        if (loading) {
-            mToolbarExtension.clear();
-            if (getSupportActionBar() != null) getSupportActionBar().setTitle("");
-            layoutArtist.setVisibility(View.GONE);
-            loadingArtist.setVisibility(View.VISIBLE);
-        } else {
-            layoutArtist.setVisibility(View.VISIBLE);
-            loadingArtist.setVisibility(View.GONE);
-        }
-
-    }
-
-    private void showMoreSimilars() {
-        Bundle params = new Bundle();
-        params.putString("artistName", this.mArtist.getName());
-        params.putString("tags", this.mArtist.getTagsAsString());
+    @Override
+    public void showMoreSimilars(Bundle bundle) {
         Intent intent = new Intent(this, AllSimilarArtistsActivity.class);
-        intent.putExtras(params);
+        intent.putExtras(bundle);
         startActivity(intent);
+    }
+
+    @Override
+    public void openPlayStore(String artistName) {
+        this.youtubePlayStoreListener.openPlayStore(artistName);
+    }
+
+    @Override
+    public void openYoutube(String artistName) {
+        this.youtubePlayStoreListener.openYoutube(artistName);
     }
 
     @Override
@@ -401,23 +229,7 @@ public class ArtistActivity extends AppCompatActivity implements View.OnClickLis
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-
-        if (mArtist == null) return false;
-
-        switch (item.getItemId()) {
-
-            case R.id.google_play:
-                youtubePlayStoreListener.openPlayStore(mArtist.getName());
-                break;
-
-            case R.id.youtube:
-                youtubePlayStoreListener.openYoutube(mArtist.getName());
-                break;
-
-        }
-
-        return true;
-
+        return this.presenter.openMenuItem(item.getTitle().toString(), this.mArtist);
     }
 
     @Override
@@ -427,4 +239,25 @@ public class ArtistActivity extends AppCompatActivity implements View.OnClickLis
         outState.putSerializable("topTracks", new ArrayList<>(this.mTopTracks));
         outState.putSerializable("topAlbums", new ArrayList<>(this.mTopAlbums));
     }
+
+    private void scrollToTopOfScreen() {
+        ScrollView scrollView = (ScrollView) findViewById(R.id.scrollview_main);
+        scrollView.smoothScrollTo(0, 0);
+    }
+
+    private void uiLoading(boolean loading) {
+
+        if (loading) {
+            mToolbarExtension.clear();
+            this.mArtistLl.setVisibility(View.GONE);
+            this.mDownloadFailedLl.setVisibility(View.GONE);
+            this.mLoadingLl.setVisibility(View.VISIBLE);
+        }
+        else {
+            this.mArtistLl.setVisibility(View.VISIBLE);
+            this.mLoadingLl.setVisibility(View.GONE);
+        }
+
+    }
+
 }
