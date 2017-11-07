@@ -19,7 +19,6 @@
 package newscavazzini.similarartists.activities;
 
 import android.content.Intent;
-import android.content.pm.PackageInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -28,9 +27,14 @@ import android.view.View;
 import android.widget.TextView;
 
 import newscavazzini.similarartists.R;
+import newscavazzini.similarartists.mvp.presenter.SettingsActivityPresenter;
+import newscavazzini.similarartists.mvp.view.SettingsActivityView;
 
 
-public class SettingsActivity extends AppCompatActivity implements View.OnClickListener {
+public class SettingsActivity extends AppCompatActivity
+        implements View.OnClickListener, SettingsActivityView {
+
+    private SettingsActivityPresenter presenter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,34 +42,31 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        if(toolbar != null) setSupportActionBar(toolbar);
+        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
+
+        presenter = new SettingsActivityPresenter(this);
+
+        this.presenter.showAppVersion();
 
         findViewById(R.id.github_btn).setOnClickListener(this);
         findViewById(R.id.lastfm_btn).setOnClickListener(this);
 
-        try {
-
-            TextView versionNameTv = (TextView) findViewById(R.id.version_tv);
-            PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
-            String version = pInfo.versionName;
-            versionNameTv.setText(version);
-
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    private void openWebsite(String url){
-        Intent launchBrowser = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-        startActivity(launchBrowser);
     }
 
     @Override
     public void onClick(View v) {
-        if (v.getId() == R.id.lastfm_btn) openWebsite("http://www.lastfm.com/");
-        if (v.getId() == R.id.github_btn) openWebsite("https://github.com/newtonscavazzini/SimilarArtists/");
+        SettingsActivity.this.presenter.openLink(v.getTag().toString());
+    }
+
+    @Override
+    public void showAppVersion(String version) {
+        TextView versionTv = (TextView) findViewById(R.id.version_tv);
+        versionTv.setText(version);
+    }
+
+    @Override
+    public void openWebsite(String url){
+        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
     }
 
 }
