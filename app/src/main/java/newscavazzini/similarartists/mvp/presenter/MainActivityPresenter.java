@@ -31,7 +31,7 @@ public class MainActivityPresenter {
                 public void onResponse(Call<List<Artist>> call,
                                        Response<List<Artist>> response) {
 
-                    if (response.body().size() > 0) {
+                    if (response.isSuccessful()) {
                         view.showArtists(response.body());
                     }
                     else {
