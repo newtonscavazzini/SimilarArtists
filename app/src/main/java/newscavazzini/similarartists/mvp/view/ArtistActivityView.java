@@ -27,4 +27,7 @@ public interface ArtistActivityView {
     void openPlayStore(String artistName);
     void openYoutube(String artistName);
 
+    void showLoadingProgress();
+    void hideLoadingProgress();
+
 }

@@ -93,7 +93,6 @@ public class ArtistActivity extends AppCompatActivity implements ArtistActivityV
         findViewById(R.id.try_again).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ArtistActivity.this.uiLoading(true);
                 ArtistActivity.this.presenter.tryAgain(getIntent().getExtras());
             }
         });
@@ -134,7 +133,6 @@ public class ArtistActivity extends AppCompatActivity implements ArtistActivityV
         });
 
         scrollToTopOfScreen();
-        uiLoading(false);
 
     }
 
@@ -245,19 +243,18 @@ public class ArtistActivity extends AppCompatActivity implements ArtistActivityV
         scrollView.smoothScrollTo(0, 0);
     }
 
-    private void uiLoading(boolean loading) {
+    @Override
+    public void showLoadingProgress() {
+        mToolbarExtension.clear();
+        this.mArtistLl.setVisibility(View.GONE);
+        this.mDownloadFailedLl.setVisibility(View.GONE);
+        this.mLoadingLl.setVisibility(View.VISIBLE);
+    }
 
-        if (loading) {
-            mToolbarExtension.clear();
-            this.mArtistLl.setVisibility(View.GONE);
-            this.mDownloadFailedLl.setVisibility(View.GONE);
-            this.mLoadingLl.setVisibility(View.VISIBLE);
-        }
-        else {
-            this.mArtistLl.setVisibility(View.VISIBLE);
-            this.mLoadingLl.setVisibility(View.GONE);
-        }
-
+    @Override
+    public void hideLoadingProgress() {
+        this.mArtistLl.setVisibility(View.VISIBLE);
+        this.mLoadingLl.setVisibility(View.GONE);
     }
 
 }

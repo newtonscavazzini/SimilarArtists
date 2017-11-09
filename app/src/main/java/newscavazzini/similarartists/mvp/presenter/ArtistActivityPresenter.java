@@ -36,6 +36,7 @@ public class ArtistActivityPresenter {
                 if (artist != null) {
                     view.showArtistInfo(artist);
                     view.showSimilarArtists(artist.getSimilar().getArtists());
+                    view.hideLoadingProgress();
                 }
                 else {
                     view.artistNotFound();
@@ -69,6 +70,7 @@ public class ArtistActivityPresenter {
                         if (response.isSuccessful()) {
                             view.showArtistInfo(response.body());
                             view.showSimilarArtists(response.body().getSimilar().getArtists());
+                            view.hideLoadingProgress();
                         }
                     }
 
@@ -151,6 +153,7 @@ public class ArtistActivityPresenter {
     }
 
     public void tryAgain(Bundle extras) {
+        view.showLoadingProgress();
         loadArtistInfo(extras, null);
     }
 }
