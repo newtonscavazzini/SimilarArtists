@@ -29,10 +29,6 @@ import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
-
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,23 +37,21 @@ import newscavazzini.similarartists.R;
 import newscavazzini.similarartists.adapters.ArtistAdapter;
 import newscavazzini.similarartists.listeners.ArtistClickListener;
 import newscavazzini.similarartists.models.artist.Artist;
-import newscavazzini.similarartists.retrofit.RetrofitInitializer;
-import newscavazzini.similarartists.retrofit.deserializer.SearchDeserializer;
+import newscavazzini.similarartists.mvp.presenter.SearchArtistActivityPresenter;
+import newscavazzini.similarartists.mvp.view.SearchArtistActivityView;
 import newscavazzini.similarartists.ui.ToolbarExtension;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 
-public class SearchArtistActivity extends AppCompatActivity implements View.OnClickListener {
-    
+public class SearchArtistActivity extends AppCompatActivity
+        implements View.OnClickListener, SearchArtistActivityView {
+
+    private SearchArtistActivityPresenter presenter;
     private String mSearchTerm;
-    private String mArtistName;
     private List<Artist> mSimilarArtists = new ArrayList<>();
-    private int mDownloadAttempts;
 
-    private GridView mSimilarArtistsGv;
     private ToolbarExtension mToolbarExtension;
+    private LinearLayout mDownloadFailedLl;
+    private LinearLayout mLoadingLl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,81 +59,41 @@ public class SearchArtistActivity extends AppCompatActivity implements View.OnCl
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search);
 
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        if (toolbar != null) setSupportActionBar(toolbar);
+        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
+        this.mDownloadFailedLl = (LinearLayout) findViewById(R.id.download_failed_ll);
+        this.mLoadingLl = (LinearLayout) findViewById(R.id.loadingList);
+        this.mToolbarExtension = new ToolbarExtension(this);
 
-        mToolbarExtension = new ToolbarExtension(this);
-
-        Intent intent = getIntent();
-
-        if (!Intent.ACTION_SEARCH.equals(intent.getAction())) {
+        if (!Intent.ACTION_SEARCH.equals(getIntent().getAction())) {
             finish();
             return;
         }
 
-        mSearchTerm = (Normalizer.normalize(intent.getStringExtra(SearchManager.QUERY), Normalizer.Form.NFD)).trim();
+        mSearchTerm = (Normalizer.normalize(getIntent().getStringExtra(
+                SearchManager.QUERY), Normalizer.Form.NFD)).trim();
 
-        if(intent.getExtras() != null) {
+        this.presenter = new SearchArtistActivityPresenter(this);
+        this.presenter.searchArtist(mSearchTerm, savedInstanceState);
 
-            if (savedInstanceState != null) {
-
-                loadFromInstanceState(savedInstanceState);
-                scrollToTopOfScreen();
-
-            } else {
-
-                loadFromNetwork();
-                scrollToTopOfScreen();
-
-            }
-
-        } else {
-            finish();
-        }
+        findViewById(R.id.try_again).setOnClickListener(this);
 
     }
 
-    private void loadFromInstanceState(Bundle savedInstanceState) {
+    @Override
+    public void showResults(List<Artist> artistsFound) {
 
-        String artistName = savedInstanceState.getString("artistName");
-        List<Artist> similarArtists = ((List<Artist>) savedInstanceState.getSerializable("similarArtists"));
+        scrollToTopOfScreen();
+        this.mSimilarArtists = artistsFound;
 
-        if (artistName != null && !artistName.equals("")
-                && similarArtists != null && similarArtists.size() > 0) {
+        if (getSupportActionBar() != null)
+            getSupportActionBar().setTitle(R.string.searching_for);
 
-            loadUi(artistName, similarArtists);
+        this.mToolbarExtension.show(R.drawable.ic_search_white,
+                mSearchTerm, null);
 
-        } else {
-            downloadFailed();
-        }
-
-    }
-
-    private void uiLoading(boolean loading) {
-
-        LinearLayout loadingList = (LinearLayout) findViewById(R.id.loadingList);
-
-        if (loading) {
-            mToolbarExtension.clear();
-            if (getSupportActionBar() != null) getSupportActionBar().setTitle("");
-            loadingList.setVisibility(View.VISIBLE);
-
-        } else {
-            loadingList.setVisibility(View.GONE);
-        }
-
-    }
-
-    private void tryAgain() {
-        mDownloadAttempts = 0;
-
-        LinearLayout progress = (LinearLayout) findViewById(R.id.loadingList);
-        progress.setVisibility(View.VISIBLE);
-
-        View emptyBox = findViewById(R.id.download_failed_ll);
-        emptyBox.setVisibility(View.GONE);
-
-        loadFromNetwork();
+        GridView mSimilarArtistsGv = (GridView) findViewById(R.id.artists_gv);
+        mSimilarArtistsGv.setAdapter(new ArtistAdapter(this, artistsFound,
+                        new ArtistClickListener(this)));
     }
 
     @Override
@@ -147,87 +101,34 @@ public class SearchArtistActivity extends AppCompatActivity implements View.OnCl
         switch (v.getId()){
 
             case R.id.try_again:
-                tryAgain();
+                SearchArtistActivity.this.presenter.tryAgain(mSearchTerm);
                 break;
 
         }
     }
 
-    private void loadFromNetwork() {
-
-        if (mSearchTerm.equals("")) {
-            finish();
-            return;
-        }
-
-        mDownloadAttempts++;
-
-        if (mDownloadAttempts > 3) {
-
-            downloadFailed();
-            findViewById(R.id.loadingList).setVisibility(View.GONE);
-
-            return;
-        }
-
-        final String artistName = mSearchTerm;
-
-        uiLoading(true);
-
-        Gson gsonSearchArtist = new GsonBuilder()
-                .registerTypeAdapter(new TypeToken<List<Artist>>(){}.getType(), new SearchDeserializer())
-                .create();
-
-        Call<List<Artist>> searchCall = new RetrofitInitializer(gsonSearchArtist)
-                .getArtistService()
-                .getSearch(artistName, RetrofitInitializer.LAST_FM_KEY);
-
-        searchCall.enqueue(new Callback<List<Artist>>() {
-
-            @Override
-            public void onResponse(Call<List<Artist>> call, Response<List<Artist>> response) {
-
-                List<Artist> similarArtists = response.body();
-                if (similarArtists != null && similarArtists.size() > 0) {
-
-                    loadUi(artistName, similarArtists);
-                    uiLoading(false);
-
-                } else {
-                    loadFromNetwork();
-                }
-
-            }
-
-            @Override
-            public void onFailure(Call<List<Artist>> call, Throwable t) {
-                loadFromNetwork();
-            }
-        });
-
+    @Override
+    public void displayLoadingLayout() {
+        this.mLoadingLl.setVisibility(View.VISIBLE);
+        this.mDownloadFailedLl.setVisibility(View.GONE);
     }
 
-    private void downloadFailed() {
-
-        findViewById(R.id.download_failed_ll).setVisibility(View.VISIBLE);
-        findViewById(R.id.try_again).setOnClickListener(this);
-
+    @Override
+    public void displayErrorLayout() {
+        this.mLoadingLl.setVisibility(View.GONE);
+        this.mDownloadFailedLl.setVisibility(View.VISIBLE);
     }
 
-    private void loadUi(String artistName, List<Artist> similarArtists) {
+    @Override
+    public void displayResultsLayout() {
+        this.mLoadingLl.setVisibility(View.GONE);
+        this.mDownloadFailedLl.setVisibility(View.GONE);
+    }
 
-        mArtistName = artistName;
-        mSimilarArtists = similarArtists;
-
-        findViewById(R.id.download_failed_ll).setVisibility(View.GONE);
-
-        if (getSupportActionBar() != null) getSupportActionBar().setTitle(R.string.searching_for);
-
-        mToolbarExtension.show(R.drawable.ic_search_white, artistName, null);
-
-        mSimilarArtistsGv = (GridView) findViewById(R.id.artists_gv);
-        mSimilarArtistsGv.setAdapter(new ArtistAdapter(this, similarArtists, new ArtistClickListener(this)));
-
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle bundle){
+        super.onSaveInstanceState(bundle);
+        bundle.putSerializable("similarArtists", new ArrayList<>(mSimilarArtists));
     }
 
     private void scrollToTopOfScreen() {
@@ -235,10 +136,4 @@ public class SearchArtistActivity extends AppCompatActivity implements View.OnCl
         scrollView.smoothScrollTo(0, 0);
     }
 
-    @Override
-    protected void onSaveInstanceState(@NonNull Bundle bundle){
-        super.onSaveInstanceState(bundle);
-        bundle.putString("artistName", mArtistName);
-        bundle.putSerializable("similarArtists", new ArrayList<>(mSimilarArtists));
-    }
 }

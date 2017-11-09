@@ -15,6 +15,7 @@ import newscavazzini.similarartists.models.track.Track;
 import newscavazzini.similarartists.retrofit.RetrofitInitializer;
 import newscavazzini.similarartists.retrofit.deserializer.AlbumDeserializer;
 import newscavazzini.similarartists.retrofit.deserializer.ArtistDeserializer;
+import newscavazzini.similarartists.retrofit.deserializer.SearchDeserializer;
 import newscavazzini.similarartists.retrofit.deserializer.TopArtistsDeserializer;
 import newscavazzini.similarartists.retrofit.deserializer.TrackListDeserializer;
 import retrofit2.Call;
@@ -85,6 +86,21 @@ public class NetworkArtistRepository implements ArtistRepository {
                         RetrofitInitializer.LAST_FM_KEY, 4);
 
         topAlbumsCall.enqueue(callback);
+    }
+
+    @Override
+    public void searchArtist(String searchTerm, Callback<List<Artist>> callback) {
+
+        Gson gsonSearchArtist = new GsonBuilder()
+                .registerTypeAdapter(new TypeToken<List<Artist>>(){}.getType(),
+                        new SearchDeserializer())
+                .create();
+
+        Call<List<Artist>> searchCall = new RetrofitInitializer(gsonSearchArtist)
+                .getArtistService()
+                .getSearch(searchTerm, RetrofitInitializer.LAST_FM_KEY);
+
+        searchCall.enqueue(callback);
     }
 
 }

@@ -14,4 +14,5 @@ public interface ArtistRepository {
     void getArtistInfo(Bundle mExtras, Callback<Artist> callback);
     void getTopTracksOfArtist(Bundle extras, Callback<List<Track>> callback);
     void getTopAlbumsOfArtist(Bundle extras, Callback<List<Album>> callback);
+    void searchArtist(String searchTerm, Callback<List<Artist>> callback);
 }
