@@ -65,7 +65,7 @@ public class MainActivityPresenter {
                 view.showArtists(artistList);
             }
             else {
-                view.showError();
+                tryAgain();
             }
 
         }
