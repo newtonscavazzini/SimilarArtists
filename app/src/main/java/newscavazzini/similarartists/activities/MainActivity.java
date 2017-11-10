@@ -32,6 +32,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.GridView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
     private List<Artist> mTopArtists = new ArrayList<>();
     private LinearLayout mDownloadFailedLl;
     private LinearLayout mLoadingLl;
+    private TextView mErrorMessageTv;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +60,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
 
         mDownloadFailedLl = (LinearLayout) findViewById(R.id.download_failed_ll);
         mLoadingLl = (LinearLayout) findViewById(R.id.loading);
+        mErrorMessageTv = (TextView) findViewById(R.id.error_message_tv);
 
         presenter = new MainActivityPresenter(this);
 
@@ -92,6 +95,12 @@ public class MainActivity extends AppCompatActivity implements MainActivityView 
     public void showError() {
         this.mLoadingLl.setVisibility(View.GONE);
         this.mDownloadFailedLl.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void showError(String message) {
+        showError();
+        this.mErrorMessageTv.setText(message);
     }
 
     @Override

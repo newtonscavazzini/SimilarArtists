@@ -2,6 +2,9 @@ package newscavazzini.similarartists.mvp.presenter;
 
 import android.os.Bundle;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.List;
 
 import newscavazzini.similarartists.models.artist.Artist;
@@ -35,7 +38,14 @@ public class MainActivityPresenter {
                         view.showArtists(response.body());
                     }
                     else {
-                        view.showError();
+
+                        try {
+                            view.showError(getErrorMessage(response.errorBody().string()));
+                        }
+                        catch (Exception e) {
+                            view.showError();
+                        }
+
                     }
                 }
 
@@ -64,5 +74,9 @@ public class MainActivityPresenter {
 
     public void tryAgain() {
         loadTopArtists(null);
+    }
+
+    private String getErrorMessage(String errorBody) throws JSONException {
+        return new JSONObject(errorBody).get("message").toString();
     }
 }
