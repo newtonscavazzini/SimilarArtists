@@ -28,6 +28,7 @@ import android.view.View;
 import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.TextView;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -52,6 +53,7 @@ public class SearchArtistActivity extends AppCompatActivity
     private ToolbarExtension mToolbarExtension;
     private LinearLayout mDownloadFailedLl;
     private LinearLayout mLoadingLl;
+    private TextView mErrorMessageTv;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +64,7 @@ public class SearchArtistActivity extends AppCompatActivity
         setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
         this.mDownloadFailedLl = (LinearLayout) findViewById(R.id.download_failed_ll);
         this.mLoadingLl = (LinearLayout) findViewById(R.id.loadingList);
+        mErrorMessageTv = (TextView) findViewById(R.id.error_message_tv);
         this.mToolbarExtension = new ToolbarExtension(this);
 
         if (!Intent.ACTION_SEARCH.equals(getIntent().getAction())) {
@@ -117,6 +120,12 @@ public class SearchArtistActivity extends AppCompatActivity
     public void displayErrorLayout() {
         this.mLoadingLl.setVisibility(View.GONE);
         this.mDownloadFailedLl.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void displayErrorLayout(String message) {
+        this.mErrorMessageTv.setText(message);
+        displayErrorLayout();
     }
 
     @Override

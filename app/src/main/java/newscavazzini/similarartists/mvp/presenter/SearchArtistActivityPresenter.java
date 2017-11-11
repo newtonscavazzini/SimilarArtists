@@ -8,6 +8,7 @@ import newscavazzini.similarartists.models.artist.Artist;
 import newscavazzini.similarartists.mvp.model.ArtistRepository;
 import newscavazzini.similarartists.mvp.model.NetworkArtistRepository;
 import newscavazzini.similarartists.mvp.view.SearchArtistActivityView;
+import newscavazzini.similarartists.retrofit.ErrorCodes;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -39,7 +40,15 @@ public class SearchArtistActivityPresenter {
                         view.displayResultsLayout();
                     }
                     else {
-                        view.displayErrorLayout();
+
+                        try {
+                            view.displayErrorLayout(ErrorCodes.getErrorMessage(
+                                    response.errorBody().string()));
+                        }
+                        catch (Exception e) {
+                            view.displayErrorLayout();
+                        }
+
                     }
                 }
 

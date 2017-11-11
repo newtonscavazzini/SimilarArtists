@@ -9,6 +9,7 @@ public interface SearchArtistActivityView {
     void showResults(List<Artist> artistsFound);
 
     void displayLoadingLayout();
+    void displayErrorLayout(String message);
     void displayErrorLayout();
     void displayResultsLayout();
 }
