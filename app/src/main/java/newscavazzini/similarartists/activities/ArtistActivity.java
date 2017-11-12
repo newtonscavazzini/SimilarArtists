@@ -67,6 +67,7 @@ public class ArtistActivity extends AppCompatActivity implements ArtistActivityV
     private TextView mTopAlbumsTitleTv;
     private TextView mTopTracksTitleTv;
     private TextView mSimilarTitleTv;
+    private TextView mErrorMessageTv;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +82,7 @@ public class ArtistActivity extends AppCompatActivity implements ArtistActivityV
         this.mTopAlbumsTitleTv = (TextView) findViewById(R.id.title_top_albums_tv);
         this.mTopTracksTitleTv = (TextView) findViewById(R.id.title_top_tracks_tv);
         this.mSimilarTitleTv = (TextView) findViewById(R.id.title_similars_tv);
+        this.mErrorMessageTv = (TextView) findViewById(R.id.error_message_tv);
 
         mToolbarExtension = new ToolbarExtension(this);
         youtubePlayStoreListener = new YoutubePlayStoreClickListener(this);
@@ -140,6 +142,12 @@ public class ArtistActivity extends AppCompatActivity implements ArtistActivityV
     public void artistNotFound() {
         this.mLoadingLl.setVisibility(View.GONE);
         this.mDownloadFailedLl.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void artistNotFound(String message) {
+        this.artistNotFound();
+        this.mErrorMessageTv.setText(message);
     }
 
     @Override

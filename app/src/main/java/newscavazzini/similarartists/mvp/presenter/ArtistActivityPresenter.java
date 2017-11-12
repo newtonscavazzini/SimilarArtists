@@ -10,6 +10,7 @@ import newscavazzini.similarartists.models.track.Track;
 import newscavazzini.similarartists.mvp.model.ArtistRepository;
 import newscavazzini.similarartists.mvp.model.NetworkArtistRepository;
 import newscavazzini.similarartists.mvp.view.ArtistActivityView;
+import newscavazzini.similarartists.retrofit.ErrorCodes;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -71,6 +72,17 @@ public class ArtistActivityPresenter {
                             view.showArtistInfo(response.body());
                             view.showSimilarArtists(response.body().getSimilar().getArtists());
                             view.hideLoadingProgress();
+                        }
+                        else {
+
+                            try {
+                                view.artistNotFound(ErrorCodes.getErrorMessage(
+                                        response.errorBody().string()));
+                            }
+                            catch (Exception e) {
+                                view.artistNotFound();
+                            }
+
                         }
                     }
 

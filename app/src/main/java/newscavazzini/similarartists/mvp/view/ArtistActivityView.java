@@ -12,6 +12,7 @@ public interface ArtistActivityView {
 
     void showArtistInfo(Artist artist);
     void artistNotFound();
+    void artistNotFound(String message);
 
     void showSimilarArtists(List<Artist> similarArtists);
     void similarArtistsNotFound();
